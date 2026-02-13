@@ -52,6 +52,8 @@ Trained models and datasets are not included due to GitHub size limitations.
 ![Demo](images/dashboard_image_3.png)
 ![Demo](images/test_AI.png)
 ![Demo](images/real.png)
+
+#### Testing the gas detector 
 ![Demo](images/gas_detect1.png)
 ![Demo](images/gas_monitor_dashboard1.png)
 ![Demo](images/MFCC_1.png)
