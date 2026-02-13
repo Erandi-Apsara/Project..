@@ -38,11 +38,10 @@ Trained models and datasets are not included due to GitHub size limitations.
 ## 🖼 Demo
 
 ### System Architecture
-![Architecture](images/architecture_diagram.png)
+![Architecture](images/circuit_1.png)
 
 ### Robot in Action
 ![Demo](images/prototype_1.png)
-![Demo](images/circuit_1.png)
 ![Demo](images/project_flowchart.png)
 ![Demo](images/dashboard_basic_2.png)
 ![Demo](images/dashboard_basic_3.png)
