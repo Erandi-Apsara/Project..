@@ -1,0 +1,20 @@
+# Virtual environments
+venv/
+model/venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Model weights
+*.pt
+*.pth
+*.h5
+
+# Datasets
+*.zip
+*.tar
+*.gz
+
+# Mac system files
+.DS_Store
