@@ -57,7 +57,11 @@ Trained models and datasets are not included due to GitHub size limitations.
 ![Demo](images/gas_detect1.png)
 ![Demo](images/gas_monitor_dashboard1.png)
 ![Demo](images/MFCC_1.png)
+
+#### Confusion matrix for speech classifier 
 ![Demo](images/confusion_matrix_for_speech1.png)
+
+#### PCB of SIM800L module
 ![Demo](images/sim_module_1.png)
 
 
