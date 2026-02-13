@@ -1,0 +1,3022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Robot Dashboard</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto 1fr 1fr;
+            gap: 20px;
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+            min-height: 100vh;
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 20px;
+            background: rgba(52, 152, 219, 0.1);
+            border-radius: 25px;
+            border: 2px solid rgba(52, 152, 219, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .status-item.connected {
+            background: rgba(46, 204, 113, 0.1);
+            border-color: rgba(46, 204, 113, 0.5);
+        }
+
+        .status-item.disconnected {
+            background: rgba(231, 76, 60, 0.1);
+            border-color: rgba(231, 76, 60, 0.5);
+        }
+
+        .status-item.warning {
+            background: rgba(243, 156, 18, 0.1);
+            border-color: rgba(243, 156, 18, 0.5);
+        }
+
+        .status-item.searching {
+            background: rgba(155, 89, 182, 0.1);
+            border-color: rgba(155, 89, 182, 0.5);
+        }
+
+        /* Status change animations */
+        .status-item i {
+            transition: all 0.3s ease;
+        }
+
+        .status-item.connected i {
+            animation: pulse-green 2s infinite;
+        }
+
+        .status-item.disconnected i {
+            animation: pulse-red 1s infinite;
+        }
+
+        .status-item.warning i {
+            animation: pulse-orange 1.5s infinite;
+        }
+
+        @keyframes pulse-green {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        @keyframes pulse-red {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        @keyframes pulse-orange {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
+        .status-item i {
+            font-size: 1.2em;
+            color: #3498db;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .card h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card h2 i {
+            color: #3498db;
+        }
+
+        .map-container {
+            height: 400px;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 2px solid rgba(52, 152, 219, 0.3);
+            position: relative;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+            border-radius: 8px;
+        }
+
+        .upload-section {
+            border: 2px dashed #3498db;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .upload-section:hover {
+            border-color: #2980b9;
+            background: rgba(52, 152, 219, 0.05);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-btn {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(52, 152, 219, 0.2);
+        }
+
+        .data-table th {
+            background: rgba(52, 152, 219, 0.1);
+            color: #2c3e50;
+            font-weight: bold;
+        }
+
+        .data-table tr:hover {
+            background: rgba(52, 152, 219, 0.05);
+        }
+
+        .detection-result {
+            background: rgba(46, 204, 113, 0.1);
+            border: 1px solid rgba(46, 204, 113, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .detection-result.error {
+            background: rgba(231, 76, 60, 0.1);
+            border-color: rgba(231, 76, 60, 0.3);
+        }
+
+        .confidence-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(52, 152, 219, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #e74c3c, #f39c12, #2ecc71);
+            transition: width 0.3s ease;
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .metric-item {
+            background: rgba(52, 152, 219, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid rgba(52, 152, 219, 0.2);
+        }
+
+        .metric-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .metric-label {
+            color: #7f8c8d;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(45deg, #2ecc71, #27ae60);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(46, 204, 113, 0.4);
+        }
+
+        .scrollable {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #7f8c8d;
+        }
+
+        .image-preview {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+
+        /* Enhanced map marker styles for ultra-detail view */
+        .robot-marker-hd, .detection-marker-hd {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .pulse-marker {
+            animation: pulse-attention 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse-attention {
+            0% { 
+                opacity: 1; 
+                transform: scale(1); 
+            }
+            50% { 
+                opacity: 0.6; 
+                transform: scale(1.3); 
+            }
+            100% { 
+                opacity: 1; 
+                transform: scale(1); 
+            }
+        }
+
+        /* Enhanced zoom controls styling */
+        .zoom-controls button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .coordinate-display {
+            user-select: text;
+            cursor: pointer;
+        }
+
+        .coordinate-display:hover {
+            background: rgba(0, 0, 0, 0.9) !important;
+        }
+
+        /* Grid overlay enhancement */
+        .leaflet-overlay-pane .leaflet-zoom-animated {
+            transition: all 0.3s ease;
+        }
+
+        /* High contrast mode for ultra-zoom */
+        .leaflet-container[data-zoom="21"], .leaflet-container[data-zoom="22"] {
+            filter: contrast(1.1) saturate(1.2);
+        }
+
+        /* Custom measurement tool styling */
+        .leaflet-container.leaflet-crosshair .leaflet-clickable {
+            cursor: crosshair !important;
+        }
+
+        /* GAS MONITORING STYLES - NEW */
+        .gas-alerts-container {
+            margin-bottom: 15px;
+        }
+
+        .gas-alert {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid;
+            animation: alertPulse 2s infinite;
+        }
+
+        .gas-alert.safe {
+            background: rgba(46, 204, 113, 0.1);
+            border-color: #2ecc71;
+            color: #27ae60;
+        }
+
+        .gas-alert.warning {
+            background: rgba(243, 156, 18, 0.1);
+            border-color: #f39c12;
+            color: #d68910;
+        }
+
+        .gas-alert.danger {
+            background: rgba(231, 76, 60, 0.1);
+            border-color: #e74c3c;
+            color: #c0392b;
+        }
+
+        .gas-alert.critical {
+            background: rgba(155, 89, 182, 0.1);
+            border-color: #9b59b6;
+            color: #8e44ad;
+            animation: criticalPulse 1s infinite;
+        }
+
+        @keyframes alertPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        @keyframes criticalPulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.9; transform: scale(1.02); }
+        }
+
+        .chart-section {
+            background: rgba(255, 255, 255, 0.5);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(52, 152, 219, 0.2);
+        }
+
+        .chart-legend span {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        /* Gas metric color coding */
+        .metric-item.gas-safe {
+            background: rgba(46, 204, 113, 0.1);
+            border: 1px solid rgba(46, 204, 113, 0.3);
+        }
+
+        .metric-item.gas-warning {
+            background: rgba(243, 156, 18, 0.1);
+            border: 1px solid rgba(243, 156, 18, 0.3);
+        }
+
+        .metric-item.gas-danger {
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid rgba(231, 76, 60, 0.3);
+        }
+
+        .metric-item.gas-critical {
+            background: rgba(155, 89, 182, 0.1);
+            border: 1px solid rgba(155, 89, 182, 0.3);
+            animation: criticalPulse 2s infinite;
+        }
+
+        /* Emergency notification banner */
+        .emergency-banner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 18px;
+            z-index: 10000;
+            transform: translateY(-100%);
+            transition: transform 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .emergency-banner.show {
+            transform: translateY(0);
+        }
+
+        .emergency-banner .close-btn {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        /* Gas detail modal */
+        .gas-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .gas-modal.show {
+            display: flex;
+        }
+
+        .gas-modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .gas-modal-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+                padding: 10px;
+            }
+            
+            .status-bar {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .metrics {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Emergency Banner -->
+    <div class="emergency-banner" id="emergency-banner">
+        <i class="fas fa-exclamation-triangle"></i>
+        <span id="emergency-message">EMERGENCY ALERT</span>
+        <button class="close-btn" onclick="hideEmergencyBanner()">&times;</button>
+    </div>
+
+    <!-- Gas Detail Modal -->
+    <div class="gas-modal" id="gas-modal">
+        <div class="gas-modal-content">
+            <span class="gas-modal-close" onclick="closeGasModal()">&times;</span>
+            <h2><i class="fas fa-microscope"></i> Detailed Gas Analysis</h2>
+            <div id="gas-modal-body"></div>
+        </div>
+    </div>
+
+    <div class="dashboard">
+        <!-- Header -->
+        <div class="header">
+            <h1><i class="fas fa-robot"></i> AI Robot Disaster Response Dashboard</h1>
+            <div class="status-bar">
+                <div class="status-item" id="connection-status-item">
+                    <i class="fas fa-satellite-dish" id="connection-icon"></i>
+                    <span id="connection-status">Connecting...</span>
+                </div>
+                <div class="status-item" id="battery-status-item">
+                    <i class="fas fa-battery-three-quarters" id="battery-icon"></i>
+                    <span id="battery-status">--</span>
+                </div>
+                <div class="status-item" id="location-status-item">
+                    <i class="fas fa-map-marker-alt" id="location-icon"></i>
+                    <span id="location-status">Searching...</span>
+                </div>
+                <div class="status-item" id="detection-status-item">
+                    <i class="fas fa-eye" id="detection-icon"></i>
+                    <span id="detection-status">Initializing...</span>
+                </div>
+                <div class="status-item" id="gas-status-item">
+                    <i class="fas fa-wind" id="gas-icon"></i>
+                    <span id="gas-status">Monitoring...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map Section -->
+        <div class="card">
+            <h2><i class="fas fa-map"></i> Real-time Location</h2>
+            <div class="map-container" id="map-container">
+                <div id="map"></div>
+            </div>
+            <button class="refresh-btn" onclick="refreshMap()">
+                <i class="fas fa-sync-alt"></i> Refresh Map
+            </button>
+        </div>
+
+        <!-- Gas Monitoring Section - NEW -->
+        <div class="card">
+            <h2><i class="fas fa-smog"></i> Gas Monitoring (Real-time)</h2>
+            
+            <div class="gas-alerts" id="gas-alerts-container">
+                <!-- Dynamic alerts will be inserted here -->
+            </div>
+            
+            <div class="gas-metrics">
+                <div class="metrics">
+                    <div class="metric-item" id="mq2-current">
+                        <div class="metric-value" id="mq2-level">--</div>
+                        <div class="metric-label">MQ2 Combustible Gas</div>
+                    </div>
+                    <div class="metric-item" id="mq135-current">
+                        <div class="metric-value" id="mq135-level">--</div>
+                        <div class="metric-label">MQ135 Air Quality (ppm)</div>
+                    </div>
+                    <div class="metric-item" id="gas-status">
+                        <div class="metric-value" id="overall-gas-status">SAFE</div>
+                        <div class="metric-label">Overall Status</div>
+                    </div>
+                    <div class="metric-item" id="methane-current">
+                        <div class="metric-value" id="methane-level">--</div>
+                        <div class="metric-label">Methane (ppm)</div>
+                    </div>
+                    <div class="metric-item" id="lpg-current">
+                        <div class="metric-value" id="lpg-level">--</div>
+                        <div class="metric-label">LPG (ppm)</div>
+                    </div>
+                    <div class="metric-item" id="smoke-current">
+                        <div class="metric-value" id="smoke-level">--</div>
+                        <div class="metric-label">Smoke (ppm)</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Real-time Gas Charts -->
+            <div class="gas-charts-container" style="margin-top: 20px;">
+                <div class="chart-section">
+                    <h3 style="text-align: center; color: #2c3e50; margin-bottom: 15px;">
+                        <i class="fas fa-fire"></i> MQ2 Combustible Gas Levels
+                    </h3>
+                    <div id="mq2-chart" style="width: 100%; height: 200px; background: #f8f9fa; border-radius: 10px; position: relative;">
+                        <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666;">
+                            <i class="fas fa-chart-line" style="margin-right: 10px;"></i>
+                            Loading MQ2 data...
+                        </div>
+                    </div>
+                    <div class="chart-legend" style="margin-top: 10px; text-align: center; font-size: 12px;">
+                        <span style="color: #2ecc71;">■ Safe (&lt;40)</span>
+                        <span style="color: #f39c12; margin-left: 15px;">■ Caution (40-60)</span>
+                        <span style="color: #e74c3c; margin-left: 15px;">■ Danger (&gt;60)</span>
+                    </div>
+                </div>
+                
+                <div class="chart-section" style="margin-top: 30px;">
+                    <h3 style="text-align: center; color: #2c3e50; margin-bottom: 15px;">
+                        <i class="fas fa-wind"></i> MQ135 Air Quality Levels
+                    </h3>
+                    <div id="mq135-chart" style="width: 100%; height: 200px; background: #f8f9fa; border-radius: 10px; position: relative;">
+                        <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666;">
+                            <i class="fas fa-chart-line" style="margin-right: 10px;"></i>
+                            Loading MQ135 data...
+                        </div>
+                    </div>
+                    <div class="chart-legend" style="margin-top: 10px; text-align: center; font-size: 12px;">
+                        <span style="color: #2ecc71;">■ Good (&lt;150ppm)</span>
+                        <span style="color: #f39c12; margin-left: 15px;">■ Moderate (150-300ppm)</span>
+                        <span style="color: #e74c3c; margin-left: 15px;">■ Poor (&gt;300ppm)</span>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="refresh-btn" onclick="refreshGasData()">
+                <i class="fas fa-sync-alt"></i> Refresh Gas Data
+            </button>
+            
+            <button class="upload-btn" onclick="toggleGasAlerts()" id="gas-alerts-toggle">
+                <i class="fas fa-bell"></i> Enable Alerts
+            </button>
+
+            <button class="upload-btn" onclick="showGasDetails()" style="background: linear-gradient(45deg, #9b59b6, #8e44ad);">
+                <i class="fas fa-microscope"></i> Detailed Analysis
+            </button>
+        </div>
+
+        <!-- Live Camera Detection Section -->
+        <div class="card">
+            <h2><i class="fas fa-video"></i> Live Camera Detection</h2>
+            
+            <div class="camera-controls" style="margin-bottom: 15px; text-align: center;">
+                <button class="upload-btn" onclick="startCamera()" id="start-camera-btn">
+                    <i class="fas fa-camera"></i> Start Camera
+                </button>
+                <button class="refresh-btn" onclick="stopCamera()" id="stop-camera-btn" disabled>
+                    <i class="fas fa-stop"></i> Stop Camera
+                </button>
+                <button class="upload-btn" onclick="toggleDetection()" id="toggle-detection-btn" disabled>
+                    <i class="fas fa-search"></i> Enable Detection
+                </button>
+            </div>
+
+            <div class="camera-container" style="position: relative; max-width: 100%; height: 300px; background: #000; border-radius: 10px; overflow: hidden;">
+                <video id="camera-video" style="width: 100%; height: 100%; object-fit: cover;" autoplay muted></video>
+                <canvas id="detection-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></canvas>
+                <div id="camera-status" style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 5px 10px; border-radius: 5px; font-size: 12px;">
+                    Camera Off
+                </div>
+            </div>
+
+            <div class="detection-stats" style="margin-top: 15px;">
+                <div class="metrics">
+                    <div class="metric-item">
+                        <div class="metric-value" id="live-detections">0</div>
+                        <div class="metric-label">People Detected</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value" id="detection-confidence">--</div>
+                        <div class="metric-label">Avg Confidence</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value" id="detection-fps">--</div>
+                        <div class="metric-label">Detection FPS</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload and Test Section -->
+        <div class="card">
+            <h2><i class="fas fa-upload"></i> Test AI Models</h2>
+            
+            <div class="upload-section">
+                <i class="fas fa-cloud-upload-alt" style="font-size: 2em; color: #3498db; margin-bottom: 10px;"></i>
+                <p>Upload images or audio files to test detection</p>
+                
+                <input type="file" id="file-input" class="file-input" accept=".jpg,.jpeg,.png,.gif,.wav,.mp3,.flac">
+                
+                <button class="upload-btn" onclick="document.getElementById('file-input').click()">
+                    <i class="fas fa-image"></i> Choose File
+                </button>
+                
+                <select id="detection-type" style="margin: 10px; padding: 8px; border-radius: 5px; border: 1px solid #bdc3c7;">
+                    <option value="auto">Auto Detect</option>
+                    <option value="thermal">Thermal Image</option>
+                    <option value="visual">Normal Image</option>
+                    <option value="audio">Audio File</option>
+                </select>
+                
+                <button class="upload-btn" onclick="uploadFile()" id="upload-btn" disabled>
+                    <i class="fas fa-play"></i> Analyze
+                </button>
+            </div>
+
+            <div id="upload-result"></div>
+            
+            <div class="scrollable">
+                <h3>Upload History</h3>
+                <table class="data-table" id="upload-history-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>File</th>
+                            <th>Type</th>
+                            <th>Result</th>
+                        </tr>
+                    </thead>
+                    <tbody id="upload-history-body">
+                        <tr><td colspan="4" class="loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Robot Data Section -->
+        <div class="card">
+            <h2><i class="fas fa-chart-line"></i> Robot Sensors</h2>
+            
+            <div class="metrics">
+                <div class="metric-item">
+                    <div class="metric-value" id="front-distance">--</div>
+                    <div class="metric-label">Front Distance (cm)</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value" id="back-distance">--</div>
+                    <div class="metric-label">Back Distance (cm)</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value" id="motion-status">--</div>
+                    <div class="metric-label">Motion Detected</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value" id="robot-status">--</div>
+                    <div class="metric-label">Robot Status</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value" id="emergency-status">--</div>
+                    <div class="metric-label">Emergency Mode</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value" id="system-health">--</div>
+                    <div class="metric-label">System Health</div>
+                </div>
+            </div>
+            
+            <button class="refresh-btn" onclick="refreshData()">
+                <i class="fas fa-sync-alt"></i> Refresh Data
+            </button>
+            
+            <button class="upload-btn" onclick="simulateData()">
+                <i class="fas fa-play"></i> Simulate Data
+            </button>
+            
+            <button class="upload-btn" onclick="generateSafetyReport()" style="background: linear-gradient(45deg, #e67e22, #d35400);">
+                <i class="fas fa-file-alt"></i> Safety Report
+            </button>
+            
+            <div class="scrollable">
+                <h3>Recent Data</h3>
+                <table class="data-table" id="robot-data-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Location</th>
+                            <th>Distances</th>
+                            <th>Status</th>
+                            <th>Gas Levels</th>
+                        </tr>
+                    </thead>
+                    <tbody id="robot-data-body">
+                        <tr><td colspan="5" class="loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Detection Results Section -->
+        <div class="card">
+            <h2><i class="fas fa-search"></i> Detection Results</h2>
+            
+            <div class="metrics">
+                <div class="metric-item">
+                    <div class="metric-value" id="total-detections">--</div>
+                    <div class="metric-label">Total Detections</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value" id="recent-detections">--</div>
+                    <div class="metric-label">Last Hour</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value" id="avg-confidence">--</div>
+                    <div class="metric-label">Avg Confidence</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value" id="gas-detections">--</div>
+                    <div class="metric-label">Gas Alerts</div>
+                </div>
+            </div>
+            
+            <button class="refresh-btn" onclick="refreshDetections()">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            
+            <div class="scrollable">
+                <h3>Recent Detections</h3>
+                <table class="data-table" id="detections-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Type</th>
+                            <th>Confidence</th>
+                            <th>Location</th>
+                        </tr>
+                    </thead>
+                    <tbody id="detections-body">
+                        <tr><td colspan="4" class="loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script>
+        // Global variables
+        let selectedFile = null;
+        let map = null;
+        let robotMarkers = [];
+        let detectionMarkers = [];
+
+        // Gas monitoring variables - NEW
+        let gasAlertsEnabled = false;
+        let mq2History = [];
+        let mq135History = [];
+        let gasChartMQ2 = null;
+        let gasChartMQ135 = null;
+        let emergencyBannerShown = false;
+        const MAX_GAS_HISTORY = 50; // Keep last 50 readings
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Dashboard loading...');
+            initializeMap();
+            initializeGasMonitoring(); // NEW
+            refreshAll();
+            setInterval(refreshAll, 30000); // Auto-refresh every 30 seconds
+            setInterval(checkEmergencyStatus, 5000); // Check emergency status every 5 seconds
+        });
+
+        // EMERGENCY ALERT FUNCTIONS
+        function showEmergencyBanner(message) {
+            const banner = document.getElementById('emergency-banner');
+            const messageSpan = document.getElementById('emergency-message');
+            messageSpan.textContent = message;
+            banner.classList.add('show');
+            emergencyBannerShown = true;
+            
+            // Auto-hide after 10 seconds unless it's critical
+            if (!message.includes('CRITICAL')) {
+                setTimeout(() => {
+                    hideEmergencyBanner();
+                }, 10000);
+            }
+        }
+
+        function hideEmergencyBanner() {
+            const banner = document.getElementById('emergency-banner');
+            banner.classList.remove('show');
+            emergencyBannerShown = false;
+        }
+
+        function checkEmergencyStatus() {
+            fetch('/api/system-status')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.emergency_mode && !emergencyBannerShown) {
+                        showEmergencyBanner('🚨 EMERGENCY MODE ACTIVE - Gas hazard detected!');
+                    }
+                    
+                    if (data.active_emergency_alerts > 0 && !emergencyBannerShown) {
+                        showEmergencyBanner(`🚨 ${data.active_emergency_alerts} emergency alerts require attention!`);
+                    }
+                })
+                .catch(error => console.error('Error checking emergency status:', error));
+        }
+
+        // GAS MONITORING FUNCTIONS - NEW
+        function initializeGasMonitoring() {
+            console.log('Initializing gas monitoring...');
+            
+            // Initialize charts
+            initializeGasCharts();
+            
+            // Set up periodic gas data refresh (every 2 seconds for real-time feel)
+            setInterval(updateGasCharts, 2000);
+            
+            console.log('Gas monitoring initialized');
+        }
+
+        function initializeGasCharts() {
+            createGasChart('mq2-chart', 'MQ2');
+            createGasChart('mq135-chart', 'MQ135');
+        }
+
+        function createGasChart(containerId, sensorType) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = `
+                <canvas id="${containerId}-canvas" width="800" height="160" style="width: 100%; height: 160px; border-radius: 8px;"></canvas>
+            `;
+            
+            const canvas = document.getElementById(`${containerId}-canvas`);
+            const ctx = canvas.getContext('2d');
+            
+            // Set canvas size for high DPI
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            
+            // Initial chart draw
+            drawGasChart(ctx, [], sensorType, rect.width, rect.height);
+        }
+
+        function drawGasChart(ctx, data, sensorType, width, height) {
+            // Clear canvas
+            ctx.clearRect(0, 0, width, height);
+            
+            // Chart background
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Chart border
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(0, 0, width, height);
+            
+            if (data.length < 2) {
+                // No data message
+                ctx.fillStyle = '#666666';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(`Waiting for ${sensorType} data...`, width/2, height/2);
+                return;
+            }
+            
+            // Chart margins
+            const margin = { top: 20, right: 20, bottom: 30, left: 50 };
+            const chartWidth = width - margin.left - margin.right;
+            const chartHeight = height - margin.top - margin.bottom;
+            
+            // Determine value range
+            const maxValue = sensorType === 'MQ2' ? 100 : 500;
+            const minValue = 0;
+            
+            // Draw grid lines
+            ctx.strokeStyle = '#f0f0f0';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 5; i++) {
+                const y = margin.top + (chartHeight / 5) * i;
+                ctx.beginPath();
+                ctx.moveTo(margin.left, y);
+                ctx.lineTo(margin.left + chartWidth, y);
+                ctx.stroke();
+                
+                // Y-axis labels
+                const value = maxValue - (maxValue / 5) * i;
+                ctx.fillStyle = '#666666';
+                ctx.font = '10px Arial';
+                ctx.textAlign = 'right';
+                ctx.fillText(value.toFixed(0), margin.left - 5, y + 3);
+            }
+            
+            // Draw data line
+            if (data.length > 1) {
+                ctx.strokeStyle = getGasLineColor(data[data.length - 1].value, sensorType);
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                
+                for (let i = 0; i < data.length; i++) {
+                    const x = margin.left + (chartWidth / (data.length - 1)) * i;
+                    const y = margin.top + chartHeight - ((data[i].value / maxValue) * chartHeight);
+                    
+                    if (i === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                }
+                ctx.stroke();
+                
+                // Draw data points
+                ctx.fillStyle = getGasLineColor(data[data.length - 1].value, sensorType);
+                for (let i = 0; i < data.length; i++) {
+                    const x = margin.left + (chartWidth / (data.length - 1)) * i;
+                    const y = margin.top + chartHeight - ((data[i].value / maxValue) * chartHeight);
+                    
+                    ctx.beginPath();
+                    ctx.arc(x, y, 3, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+                
+                // Current value indicator
+                const lastPoint = data[data.length - 1];
+                const lastX = margin.left + chartWidth;
+                const lastY = margin.top + chartHeight - ((lastPoint.value / maxValue) * chartHeight);
+                
+                ctx.fillStyle = getGasLineColor(lastPoint.value, sensorType);
+                ctx.beginPath();
+                ctx.arc(lastX, lastY, 5, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                // Current value text
+                ctx.fillStyle = '#333333';
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'left';
+                const unit = sensorType === 'MQ2' ? '' : 'ppm';
+                ctx.fillText(`${lastPoint.value.toFixed(1)}${unit}`, lastX + 10, lastY + 4);
+            }
+            
+            // Chart title
+            ctx.fillStyle = '#333333';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${sensorType} - Last ${data.length} readings`, width/2, 15);
+        }
+
+        function getGasLineColor(value, sensorType) {
+            if (sensorType === 'MQ2') {
+                if (value < 30) return '#2ecc71';
+                if (value < 60) return '#f39c12';
+                return '#e74c3c';
+            } else { // MQ135
+                if (value < 150) return '#2ecc71';
+                if (value < 300) return '#f39c12';
+                return '#e74c3c';
+            }
+        }
+
+        function updateGasCharts() {
+            const now = new Date();
+            updateGasHistory(now);
+            redrawGasCharts();
+        }
+
+        function updateGasHistory(timestamp) {
+            // Get data from the latest robot data if available
+            fetch('/api/robot-data?limit=1')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        const latest = data[0];
+                        
+                        mq2History.push({
+                            timestamp: timestamp,
+                            value: latest.mq2_gas_level || 0
+                        });
+                        
+                        mq135History.push({
+                            timestamp: timestamp,
+                            value: latest.mq135_air_quality || 0
+                        });
+                        
+                        // Keep only recent history
+                        if (mq2History.length > MAX_GAS_HISTORY) {
+                            mq2History = mq2History.slice(-MAX_GAS_HISTORY);
+                        }
+                        if (mq135History.length > MAX_GAS_HISTORY) {
+                            mq135History = mq135History.slice(-MAX_GAS_HISTORY);
+                        }
+                        
+                        // Update display values
+                        document.getElementById('mq2-level').textContent = (latest.mq2_gas_level || 0).toFixed(1);
+                        document.getElementById('mq135-level').textContent = (latest.mq135_air_quality || 0).toFixed(0);
+                        document.getElementById('methane-level').textContent = (latest.methane_ppm || 0).toFixed(0);
+                        document.getElementById('lpg-level').textContent = (latest.lpg_ppm || 0).toFixed(0);
+                        document.getElementById('smoke-level').textContent = (latest.smoke_ppm || 0).toFixed(0);
+                        
+                        // Update metric styling
+                        updateMetricStyling('mq2-current', latest.mq2_gas_level || 0, 'MQ2');
+                        updateMetricStyling('mq135-current', latest.mq135_air_quality || 0, 'MQ135');
+                        updateMetricStyling('methane-current', latest.methane_ppm || 0, 'PPM');
+                        updateMetricStyling('lpg-current', latest.lpg_ppm || 0, 'PPM');
+                        updateMetricStyling('smoke-current', latest.smoke_ppm || 0, 'PPM');
+                        
+                        // Update overall status
+                        updateOverallGasStatus(
+                            latest.mq2_gas_level || 0, 
+                            latest.mq135_air_quality || 0, 
+                            latest.mq2_gas_detected || false, 
+                            latest.mq135_alert_detected || false
+                        );
+                        
+                        // Update alerts
+                        updateGasAlerts(
+                            latest.mq2_gas_level || 0, 
+                            latest.mq135_air_quality || 0, 
+                            latest.mq2_gas_detected || false, 
+                            latest.mq135_alert_detected || false,
+                            latest
+                        );
+                        
+                        // Update gas status indicator
+                        updateGasStatusIndicator(latest);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching gas data:', error);
+                });
+        }
+
+        function redrawGasCharts() {
+            // Redraw MQ2 chart
+            const mq2Canvas = document.getElementById('mq2-chart-canvas');
+            if (mq2Canvas) {
+                const ctx = mq2Canvas.getContext('2d');
+                const rect = mq2Canvas.getBoundingClientRect();
+                drawGasChart(ctx, mq2History, 'MQ2', rect.width, rect.height);
+            }
+            
+            // Redraw MQ135 chart
+            const mq135Canvas = document.getElementById('mq135-chart-canvas');
+            if (mq135Canvas) {
+                const ctx = mq135Canvas.getContext('2d');
+                const rect = mq135Canvas.getBoundingClientRect();
+                drawGasChart(ctx, mq135History, 'MQ135', rect.width, rect.height);
+            }
+        }
+
+        function updateGasStatusIndicator(data) {
+            const statusElement = document.getElementById('gas-status');
+            const statusItem = document.getElementById('gas-status-item');
+            const icon = document.getElementById('gas-icon');
+            
+            statusItem.className = 'status-item';
+            
+            const mq2Level = data.mq2_gas_level || 0;
+            const mq135Level = data.mq135_air_quality || 0;
+            const emergencyMode = data.emergency_mode || false;
+            
+            if (emergencyMode || mq2Level > 80 || mq135Level > 400) {
+                statusElement.textContent = 'CRITICAL';
+                statusItem.classList.add('disconnected');
+                icon.className = 'fas fa-exclamation-triangle';
+                icon.style.color = '#e74c3c';
+            } else if (mq2Level > 60 || mq135Level > 300) {
+                statusElement.textContent = 'DANGER';
+                statusItem.classList.add('warning');
+                icon.className = 'fas fa-exclamation-circle';
+                icon.style.color = '#f39c12';
+            } else if (mq2Level > 40 || mq135Level > 150) {
+                statusElement.textContent = 'CAUTION';
+                statusItem.classList.add('warning');
+                icon.className = 'fas fa-wind';
+                icon.style.color = '#f39c12';
+            } else {
+                statusElement.textContent = 'SAFE';
+                statusItem.classList.add('connected');
+                icon.className = 'fas fa-check-circle';
+                icon.style.color = '#2ecc71';
+            }
+        }
+
+        function updateGasMetrics(robotData) {
+            // Extract gas data from robot data
+            const mq2Level = robotData.mq2_gas_level || 0;
+            const mq2Detected = robotData.mq2_gas_detected || false;
+            const mq135Level = robotData.mq135_air_quality || 0;
+            const mq135Detected = robotData.mq135_alert_detected || false;
+            
+            // Update metric displays
+            document.getElementById('mq2-level').textContent = mq2Level.toFixed(1);
+            document.getElementById('mq135-level').textContent = mq135Level.toFixed(0);
+            
+            // Update metric styling based on levels
+            updateMetricStyling('mq2-current', mq2Level, 'MQ2');
+            updateMetricStyling('mq135-current', mq135Level, 'MQ135');
+            
+            // Update overall status
+            updateOverallGasStatus(mq2Level, mq135Level, mq2Detected, mq135Detected);
+            
+            // Update alerts
+            updateGasAlerts(mq2Level, mq135Level, mq2Detected, mq135Detected, robotData);
+        }
+
+        function updateMetricStyling(elementId, value, sensorType) {
+            const element = document.getElementById(elementId);
+            element.className = 'metric-item';
+            
+            if (sensorType === 'MQ2') {
+                if (value < 40) element.classList.add('gas-safe');
+                else if (value < 60) element.classList.add('gas-warning');
+                else if (value < 80) element.classList.add('gas-danger');
+                else element.classList.add('gas-critical');
+            } else if (sensorType === 'MQ135') {
+                if (value < 150) element.classList.add('gas-safe');
+                else if (value < 300) element.classList.add('gas-warning');
+                else if (value < 400) element.classList.add('gas-danger');
+                else element.classList.add('gas-critical');
+            } else if (sensorType === 'PPM') {
+                if (value < 200) element.classList.add('gas-safe');
+                else if (value < 500) element.classList.add('gas-warning');
+                else if (value < 800) element.classList.add('gas-danger');
+                else element.classList.add('gas-critical');
+            }
+        }
+
+        function updateOverallGasStatus(mq2Level, mq135Level, mq2Detected, mq135Detected) {
+            const statusElement = document.getElementById('overall-gas-status');
+            let status = 'SAFE';
+            let statusClass = 'gas-safe';
+            
+            if (mq2Level > 80 || mq135Level > 400) {
+                status = 'CRITICAL';
+                statusClass = 'gas-critical';
+            } else if (mq2Level > 60 || mq135Level > 300) {
+                status = 'DANGER';
+                statusClass = 'gas-danger';
+            } else if (mq2Level > 40 || mq135Level > 150) {
+                status = 'CAUTION';
+                statusClass = 'gas-warning';
+            }
+            
+            statusElement.textContent = status;
+            document.getElementById('gas-status').className = `metric-item ${statusClass}`;
+        }
+
+        function updateGasAlerts(mq2Level, mq135Level, mq2Detected, mq135Detected, robotData) {
+            if (!gasAlertsEnabled) return;
+            
+            const container = document.getElementById('gas-alerts-container');
+            let alerts = [];
+            
+            // MQ2 alerts
+            if (mq2Level > 80 || mq2Detected) {
+                alerts.push({
+                    type: 'critical',
+                    icon: 'fas fa-fire',
+                    message: `FIRE RISK: MQ2 combustible gas at ${mq2Level.toFixed(1)} - EVACUATE AREA!`
+                });
+            } else if (mq2Level > 60) {
+                alerts.push({
+                    type: 'danger',
+                    icon: 'fas fa-exclamation-triangle',
+                    message: `HIGH GAS LEVELS: MQ2 at ${mq2Level.toFixed(1)} - Use caution!`
+                });
+            } else if (mq2Level > 30) {
+                alerts.push({
+                    type: 'warning',
+                    icon: 'fas fa-info-circle',
+                    message: `Elevated gas detected: MQ2 at ${mq2Level.toFixed(1)}`
+                });
+            }
+            
+            // MQ135 alerts
+            if (mq135Level > 400 || mq135Detected) {
+                alerts.push({
+                    type: 'critical',
+                    icon: 'fas fa-skull-crossbones',
+                    message: `TOXIC AIR: MQ135 at ${mq135Level.toFixed(0)}ppm - DANGEROUS TO BREATHE!`
+                });
+            } else if (mq135Level > 300) {
+                alerts.push({
+                    type: 'danger',
+                    icon: 'fas fa-exclamation-triangle',
+                    message: `POOR AIR QUALITY: MQ135 at ${mq135Level.toFixed(0)}ppm - Avoid prolonged exposure!`
+                });
+            } else if (mq135Level > 150) {
+                alerts.push({
+                    type: 'warning',
+                    icon: 'fas fa-info-circle',
+                    message: `Moderate air quality: MQ135 at ${mq135Level.toFixed(0)}ppm`
+                });
+            }
+            
+            // Specific gas alerts if data available
+            if (robotData) {
+                if (robotData.methane_ppm > 1000) {
+                    alerts.push({
+                        type: 'critical',
+                        icon: 'fas fa-fire',
+                        message: `METHANE ALERT: ${robotData.methane_ppm.toFixed(0)}ppm detected!`
+                    });
+                }
+                
+                if (robotData.lpg_ppm > 500) {
+                    alerts.push({
+                        type: 'critical',
+                        icon: 'fas fa-fire',
+                        message: `LPG LEAK: ${robotData.lpg_ppm.toFixed(0)}ppm detected!`
+                    });
+                }
+                
+                if (robotData.smoke_ppm > 500) {
+                    alerts.push({
+                        type: 'critical',
+                        icon: 'fas fa-fire',
+                        message: `SMOKE DETECTED: ${robotData.smoke_ppm.toFixed(0)}ppm!`
+                    });
+                }
+                
+                if (robotData.emergency_mode) {
+                    alerts.push({
+                        type: 'critical',
+                        icon: 'fas fa-exclamation-triangle',
+                        message: 'EMERGENCY MODE ACTIVE - Multiple hazards detected!'
+                    });
+                }
+            }
+            
+            // Safe condition
+            if (alerts.length === 0) {
+                alerts.push({
+                    type: 'safe',
+                    icon: 'fas fa-check-circle',
+                    message: 'Air quality is good - No gas hazards detected'
+                });
+            }
+            
+            // Update alerts display
+            container.innerHTML = alerts.map(alert => `
+                <div class="gas-alert ${alert.type}">
+                    <i class="${alert.icon}" style="margin-right: 8px;"></i>
+                    ${alert.message}
+                </div>
+            `).join('');
+            
+            // Show emergency banner for critical alerts
+            const criticalAlerts = alerts.filter(alert => alert.type === 'critical');
+            if (criticalAlerts.length > 0 && !emergencyBannerShown) {
+                showEmergencyBanner(criticalAlerts[0].message);
+            }
+        }
+
+        function refreshGasData() {
+            console.log('Refreshing gas sensor data...');
+            refreshData(); // Call existing refresh function
+        }
+
+        function toggleGasAlerts() {
+            gasAlertsEnabled = !gasAlertsEnabled;
+            const button = document.getElementById('gas-alerts-toggle');
+            
+            if (gasAlertsEnabled) {
+                button.innerHTML = '<i class="fas fa-bell-slash"></i> Disable Alerts';
+                button.style.background = 'linear-gradient(45deg, #e74c3c, #c0392b)';
+                console.log('Gas alerts enabled');
+            } else {
+                button.innerHTML = '<i class="fas fa-bell"></i> Enable Alerts';
+                button.style.background = 'linear-gradient(45deg, #3498db, #2980b9)';
+                document.getElementById('gas-alerts-container').innerHTML = '';
+                console.log('Gas alerts disabled');
+            }
+        }
+
+        function showGasDetails() {
+            // Fetch latest gas data and show detailed analysis
+            fetch('/api/robot-data?limit=1')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        const latest = data[0];
+                        displayGasDetailModal(latest);
+                    }
+                })
+                .catch(error => console.error('Error fetching gas details:', error));
+        }
+
+        function displayGasDetailModal(data) {
+            const modal = document.getElementById('gas-modal');
+            const body = document.getElementById('gas-modal-body');
+            
+            body.innerHTML = `
+                <div style="margin-bottom: 20px;">
+                    <h3><i class="fas fa-clock"></i> Current Readings</h3>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 15px 0;">
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                            <strong>MQ2 Combustible Gas:</strong><br>
+                            ${(data.mq2_gas_level || 0).toFixed(2)} (Raw: ${data.mq2_gas_level || 0})<br>
+                            <small>Resistance: ${(data.mq2_resistance || 0).toFixed(0)}Ω</small>
+                        </div>
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                            <strong>MQ135 Air Quality:</strong><br>
+                            ${(data.mq135_air_quality || 0).toFixed(0)} ppm<br>
+                            <small>Status: ${data.mq135_alert_detected ? 'ALERT' : 'Normal'}</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <h3><i class="fas fa-microscope"></i> Specific Gas Analysis</h3>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 15px 0;">
+                        <div style="padding: 10px; border-left: 4px solid ${(data.methane_ppm || 0) > 1000 ? '#e74c3c' : '#2ecc71'}; background: #f8f9fa;">
+                            <strong>Methane (CH₄):</strong> ${(data.methane_ppm || 0).toFixed(1)} ppm
+                        </div>
+                        <div style="padding: 10px; border-left: 4px solid ${(data.hydrogen_ppm || 0) > 500 ? '#e74c3c' : '#2ecc71'}; background: #f8f9fa;">
+                            <strong>Hydrogen (H₂):</strong> ${(data.hydrogen_ppm || 0).toFixed(1)} ppm
+                        </div>
+                        <div style="padding: 10px; border-left: 4px solid ${(data.lpg_ppm || 0) > 500 ? '#e74c3c' : '#2ecc71'}; background: #f8f9fa;">
+                            <strong>LPG:</strong> ${(data.lpg_ppm || 0).toFixed(1)} ppm
+                        </div>
+                        <div style="padding: 10px; border-left: 4px solid ${(data.smoke_ppm || 0) > 500 ? '#e74c3c' : '#2ecc71'}; background: #f8f9fa;">
+                            <strong>Smoke:</strong> ${(data.smoke_ppm || 0).toFixed(1)} ppm
+                        </div>
+                        <div style="padding: 10px; border-left: 4px solid ${(data.alcohol_ppm || 0) > 200 ? '#e74c3c' : '#2ecc71'}; background: #f8f9fa;">
+                            <strong>Alcohol:</strong> ${(data.alcohol_ppm || 0).toFixed(1)} ppm
+                        </div>
+                        <div style="padding: 10px; border-left: 4px solid ${data.emergency_mode ? '#e74c3c' : '#2ecc71'}; background: #f8f9fa;">
+                            <strong>Emergency Mode:</strong> ${data.emergency_mode ? 'ACTIVE' : 'Standby'}
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <h3><i class="fas fa-map-marker-alt"></i> Location & Environment</h3>
+                    <div style="background: #e8f4f8; padding: 15px; border-radius: 8px;">
+                        <strong>Location:</strong> ${(data.latitude || 0).toFixed(6)}, ${(data.longitude || 0).toFixed(6)}<br>
+                        <strong>Temperature:</strong> ${(data.temperature || 0).toFixed(1)}°C<br>
+                        <strong>System Health:</strong> ${data.system_healthy ? 'Good' : 'Issues detected'}<br>
+                        <strong>Last Update:</strong> ${new Date(data.timestamp).toLocaleString()}
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <button onclick="generateSafetyReport()" style="padding: 10px 20px; background: #3498db; color: white; border: none; border-radius: 5px; margin: 5px;">
+                        <i class="fas fa-file-alt"></i> Generate Safety Report
+                    </button>
+                    <button onclick="refreshGasData()" style="padding: 10px 20px; background: #2ecc71; color: white; border: none; border-radius: 5px; margin: 5px;">
+                        <i class="fas fa-sync-alt"></i> Refresh Data
+                    </button>
+                </div>
+            `;
+            
+            modal.classList.add('show');
+        }
+
+        function closeGasModal() {
+            document.getElementById('gas-modal').classList.remove('show');
+        }
+
+        function generateSafetyReport() {
+            console.log('Generating safety report...');
+            fetch('/api/safety-report')
+                .then(response => response.json())
+                .then(report => {
+                    if (report.error) {
+                        alert('Error generating report: ' + report.error);
+                        return;
+                    }
+                    
+                    // Display report in a new window or modal
+                    const reportWindow = window.open('', '_blank', 'width=800,height=600');
+                    reportWindow.document.write(`
+                        <html>
+                        <head>
+                            <title>Safety Report - ${new Date().toLocaleString()}</title>
+                            <style>
+                                body { font-family: Arial, sans-serif; margin: 20px; }
+                                .header { background: #3498db; color: white; padding: 20px; border-radius: 5px; }
+                                .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+                                .critical { background: #ffeaa7; border-color: #e17055; }
+                                .safe { background: #d1f2eb; border-color: #2ecc71; }
+                                .warning { background: #ffeaa7; border-color: #f39c12; }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="header">
+                                <h1>🚨 Emergency Response Safety Report</h1>
+                                <p>Generated: ${new Date().toLocaleString()}</p>
+                            </div>
+                            
+                            <div class="section ${report.current_conditions?.gas_levels?.overall_safety === 'safe' ? 'safe' : 'critical'}">
+                                <h2>📋 Executive Summary</h2>
+                                <p><strong>${report.executive_summary}</strong></p>
+                            </div>
+                            
+                            <div class="section">
+                                <h2>🌡️ Current Conditions</h2>
+                                <p><strong>Location:</strong> ${report.current_conditions?.location?.latitude?.toFixed(6)}, ${report.current_conditions?.location?.longitude?.toFixed(6)}</p>
+                                <p><strong>Temperature:</strong> ${report.current_conditions?.environmental?.temperature?.toFixed(1)}°C</p>
+                                <p><strong>Overall Safety Status:</strong> ${report.current_conditions?.gas_levels?.overall_safety?.toUpperCase()}</p>
+                                <p><strong>Risk Level:</strong> ${report.current_conditions?.gas_levels?.risk_level}/10</p>
+                            </div>
+                            
+                            <div class="section">
+                                <h2>⚠️ Risk Assessment</h2>
+                                <p><strong>Overall Risk Score:</strong> ${report.risk_assessment?.overall_risk_score}/10</p>
+                                <p><strong>Fire/Explosion Risk:</strong> ${report.risk_assessment?.fire_explosion_risk}</p>
+                                <p><strong>Health Risk:</strong> ${report.risk_assessment?.health_risk}</p>
+                                ${report.risk_assessment?.immediate_threats?.length > 0 ? 
+                                    '<h3>Immediate Threats:</h3><ul>' + 
+                                    report.risk_assessment.immediate_threats.map(threat => '<li>' + threat + '</li>').join('') + 
+                                    '</ul>' : ''}
+                            </div>
+                            
+                            <div class="section">
+                                <h2>💡 Recommendations</h2>
+                                <ul>
+                                    ${report.recommendations?.map(rec => '<li>' + rec + '</li>').join('') || '<li>No specific recommendations at this time</li>'}
+                                </ul>
+                            </div>
+                            
+                            <div class="section">
+                                <h2>📞 Emergency Contacts</h2>
+                                <p><strong>Fire Department:</strong> 110</p>
+                                <p><strong>Police:</strong> 119</p>
+                                <p><strong>Ambulance:</strong> 1990</p>
+                                <p><strong>Disaster Management Center:</strong> 117</p>
+                            </div>
+                        </body>
+                        </html>
+                    `);
+                })
+                .catch(error => {
+                    console.error('Error generating safety report:', error);
+                    alert('Error generating safety report: ' + error.message);
+                });
+        }
+
+        // Initialize Leaflet map
+        function initializeMap() {
+            // Create map centered on Negombo, Sri Lanka with ultra-high zoom
+            //map = L.map('map').setView([(6.0328948, 80.2167912)], 21); // Start with max zoom
+            map = L.map('map').setView([0, 0], 2);
+            
+
+            // Google Satellite Ultra HD (best for building-level detail)
+            const googleSatUHD = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+                attribution: '&copy; Google (Ultra HD)',
+                maxZoom: 22, // Increased for building-level detail
+                maxNativeZoom: 20,
+                tileSize: 256
+            });
+
+            // Google Hybrid Ultra HD (satellite + roads/labels)
+            const googleHybridUHD = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+                attribution: '&copy; Google Hybrid (Ultra HD)',
+                maxZoom: 22,
+                maxNativeZoom: 20,
+                tileSize: 256
+            });
+
+            // Esri World Imagery High Resolution
+            const esriHD = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: '&copy; Esri &copy; Maxar',
+                maxZoom: 21
+            });
+
+            // Bing Aerial with enhanced zoom
+            const bingAerial = L.tileLayer('https://ecn.t3.tiles.virtualearth.net/tiles/a{q}.jpeg?g=1181&mkt=en-US&shading=hill', {
+                attribution: '&copy; Microsoft Bing',
+                maxZoom: 21,
+                subdomains: ['0', '1', '2', '3', '4', '5', '6', '7']
+            });
+
+            // OpenStreetMap for reference
+            const osmHD = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors',
+                maxZoom: 20
+            });
+
+            // Default to Google Satellite UHD
+            googleSatUHD.addTo(map);
+
+            // Add layer control
+            const baseMaps = {
+                "Google Satellite UHD": googleSatUHD,
+                "Google Hybrid UHD": googleHybridUHD,
+                "Esri HD Imagery": esriHD,
+                "Bing Aerial HD": bingAerial,
+                "Street Map": osmHD
+            };
+
+            L.control.layers(baseMaps).addTo(map);
+
+            // Enhanced zoom controls with distance indicators
+            const zoomControls = L.control({position: 'topright'});
+            zoomControls.onAdd = function(map) {
+                const div = L.DomUtil.create('div', 'zoom-controls');
+                div.innerHTML = `
+                    <div style="background: rgba(0,0,0,0.8); color: white; padding: 8px; margin-bottom: 5px; border-radius: 5px; font-size: 11px; text-align: center;">
+                        <strong>📏 Precision Controls</strong>
+                    </div>
+                    <button onclick="setZoomLevel(15)" style="display: block; margin: 2px; padding: 8px 12px; background: white; border: 1px solid #ccc; border-radius: 5px; cursor: pointer; font-size: 12px;">🏙️ City View (500m)</button>
+                    <button onclick="setZoomLevel(17)" style="display: block; margin: 2px; padding: 8px 12px; background: white; border: 1px solid #ccc; border-radius: 5px; cursor: pointer; font-size: 12px;">🛣️ Street View (100m)</button>
+                    <button onclick="setZoomLevel(19)" style="display: block; margin: 2px; padding: 8px 12px; background: white; border: 1px solid #ccc; border-radius: 5px; cursor: pointer; font-size: 12px;">🏠 Building View (25m)</button>
+                    <button onclick="setZoomLevel(20)" style="display: block; margin: 2px; padding: 8px 12px; background: #2196F3; color: white; border: 1px solid #1976D2; border-radius: 5px; cursor: pointer; font-size: 12px;">📍 Room Level (10m)</button>
+                    <button onclick="setZoomLevel(21)" style="display: block; margin: 2px; padding: 8px 12px; background: #FF9800; color: white; border: 1px solid #F57C00; border-radius: 5px; cursor: pointer; font-size: 12px;">🔍 Ultra Detail (5m)</button>
+                    <button onclick="setZoomLevel(22)" style="display: block; margin: 2px; padding: 8px 12px; background: #E91E63; color: white; border: 1px solid #C2185B; border-radius: 5px; cursor: pointer; font-size: 12px;">🎯 Max Zoom (2m)</button>
+                    <button onclick="enableMeasurement()" style="display: block; margin: 2px; padding: 8px 12px; background: #4CAF50; color: white; border: 1px solid #45a049; border-radius: 5px; cursor: pointer; font-size: 12px;">📏 Measure Distance</button>
+                    <button onclick="showCoordinates()" style="display: block; margin: 2px; padding: 8px 12px; background: #9C27B0; color: white; border: 1px solid #7B1FA2; border-radius: 5px; cursor: pointer; font-size: 12px;">📊 Show Coordinates</button>
+                `;
+                return div;
+            };
+            zoomControls.addTo(map);
+
+            // Add scale control for distance reference
+            L.control.scale({
+                position: 'bottomleft',
+                metric: true,
+                imperial: true,
+                maxWidth: 200
+            }).addTo(map);
+
+            // Add coordinate display
+            addCoordinateDisplay();
+            
+            // Add measurement tools
+            initializeMeasurement();
+            
+            // Add grid overlay option
+            initializeGridOverlay();
+
+            console.log('Enhanced map initialized with building-level detail');
+        }
+
+        // Enhanced zoom level function with feedback
+        function setZoomLevel(zoomLevel) {
+            const center = map.getCenter();
+            map.setView(center, zoomLevel, {
+                animate: true,
+                duration: 0.8
+            });
+            
+            // Show zoom level feedback
+            showZoomLevelInfo(zoomLevel);
+        }
+
+        // Show zoom level information
+        function showZoomLevelInfo(zoomLevel) {
+            const distances = {
+                15: "~500m view radius",
+                17: "~100m view radius", 
+                19: "~25m view radius",
+                20: "~10m view radius (room level)",
+                21: "~5m view radius (ultra detail)",
+                22: "~2m view radius (maximum zoom)"
+            };
+            
+            const info = distances[zoomLevel] || `Zoom level ${zoomLevel}`;
+            
+            // Create temporary info popup
+            const popup = L.popup()
+                .setLatLng(map.getCenter())
+                .setContent(`<div style="text-align: center; font-weight: bold; color: #2c3e50;">📏 ${info}</div>`)
+                .openOn(map);
+                
+            // Auto-close after 2 seconds
+            setTimeout(() => {
+                map.closePopup(popup);
+            }, 2000);
+        }
+
+        // Add coordinate display
+        function addCoordinateDisplay() {
+            const coordControl = L.control({position: 'bottomleft'});
+    
+    coordControl.onAdd = function(map) {
+        const div = L.DomUtil.create('div', 'coordinate-display');
+        div.style.cssText = `
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            line-height: 1.4;
+            min-width: 200px;
+            text-align: center;
+            position: fixed;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 10px;
+            z-index: 1000;
+        `;
+                div.innerHTML = `
+                    <div><strong>📍 Coordinates:</strong></div>
+                    <div id="current-coords">Move cursor over map</div>
+                    <div id="current-zoom">Zoom: ${map.getZoom()}</div>
+                `;
+                return div;
+            };
+            
+            coordControl.addTo(map);
+            
+            // Update coordinates on mouse move
+            map.on('mousemove', function(e) {
+                const coords = document.getElementById('current-coords');
+                if (coords) {
+                    coords.innerHTML = `Lat: ${e.latlng.lat.toFixed(7)}<br>Lng: ${e.latlng.lng.toFixed(7)}`;
+                }
+            });
+            
+            // Update zoom level
+            map.on('zoomend', function() {
+                const zoomDiv = document.getElementById('current-zoom');
+                if (zoomDiv) {
+                    zoomDiv.textContent = `Zoom: ${map.getZoom()}/22`;
+                }
+            });
+        }
+
+        // Initialize measurement tools
+        function initializeMeasurement() {
+            window.measurementMode = false;
+            window.measurementMarkers = [];
+            window.measurementLines = [];
+        }
+
+        // Enable measurement mode
+        function enableMeasurement() {
+            if (!window.measurementMode) {
+                window.measurementMode = true;
+                map.getContainer().style.cursor = 'crosshair';
+                
+                // Show measurement instructions
+                const popup = L.popup()
+                    .setLatLng(map.getCenter())
+                    .setContent(`
+                        <div style="text-align: center; color: #2c3e50;">
+                            <strong>📏 Measurement Mode Active</strong><br>
+                            Click two points to measure distance<br>
+                            <button onclick="stopMeasurement()" style="margin-top: 8px; padding: 4px 8px; background: #e74c3c; color: white; border: none; border-radius: 3px;">Stop Measuring</button>
+                        </div>
+                    `)
+                    .openOn(map);
+                    
+                map.on('click', handleMeasurementClick);
+                
+            } else {
+                stopMeasurement();
+            }
+        }
+
+        // Handle measurement clicks
+        function handleMeasurementClick(e) {
+            const marker = L.circleMarker(e.latlng, {
+                radius: 5,
+                color: '#e74c3c',
+                fillColor: '#e74c3c',
+                fillOpacity: 0.8
+            }).addTo(map);
+            
+            window.measurementMarkers.push(marker);
+            
+            if (window.measurementMarkers.length === 2) {
+                const point1 = window.measurementMarkers[0].getLatLng();
+                const point2 = window.measurementMarkers[1].getLatLng();
+                
+                // Calculate distance
+                const distance = point1.distanceTo(point2);
+                
+                // Draw line
+                const line = L.polyline([point1, point2], {
+                    color: '#e74c3c',
+                    weight: 3,
+                    opacity: 0.8,
+                    dashArray: '5, 5'
+                }).addTo(map);
+                
+                window.measurementLines.push(line);
+                
+                // Show distance popup
+                const midpoint = L.latLng(
+                    (point1.lat + point2.lat) / 2,
+                    (point1.lng + point2.lng) / 2
+                );
+                
+                const distancePopup = L.popup()
+                    .setLatLng(midpoint)
+                    .setContent(`
+                        <div style="text-align: center; font-weight: bold; color: #2c3e50;">
+                            📏 Distance: <span style="color: #e74c3c;">${distance.toFixed(2)}m</span><br>
+                            <span style="font-size: 12px;">(${(distance * 3.28084).toFixed(1)} feet)</span><br>
+                            <button onclick="clearMeasurements()" style="margin-top: 5px; padding: 3px 6px; font-size: 11px;">Clear</button>
+                        </div>
+                    `)
+                    .openOn(map);
+                
+                // Reset for next measurement
+                window.measurementMarkers = [];
+            }
+        }
+
+        // Stop measurement mode
+        function stopMeasurement() {
+            window.measurementMode = false;
+            map.getContainer().style.cursor = '';
+            map.off('click', handleMeasurementClick);
+            map.closePopup();
+        }
+
+        // Clear measurements
+        function clearMeasurements() {
+            window.measurementMarkers.forEach(marker => map.removeLayer(marker));
+            window.measurementLines.forEach(line => map.removeLayer(line));
+            window.measurementMarkers = [];
+            window.measurementLines = [];
+            map.closePopup();
+        }
+
+        // Initialize grid overlay
+        function initializeGridOverlay() {
+            window.gridOverlay = null;
+        }
+
+        // Show coordinates panel
+        function showCoordinates() {
+            const center = map.getCenter();
+            const bounds = map.getBounds();
+            const zoom = map.getZoom();
+            
+            const popup = L.popup({
+                maxWidth: 400,
+                closeButton: true
+            })
+            .setLatLng(center)
+            .setContent(`
+                <div style="font-family: 'Courier New', monospace; color: #2c3e50;">
+                    <h4 style="margin: 0 0 10px 0; color: #3498db;">📊 Current View Details</h4>
+                    
+                    <div style="margin: 8px 0;">
+                        <strong>Center Coordinates:</strong><br>
+                        Latitude: ${center.lat.toFixed(8)}<br>
+                        Longitude: ${center.lng.toFixed(8)}
+                    </div>
+                    
+                    <div style="margin: 8px 0;">
+                        <strong>View Bounds:</strong><br>
+                        North: ${bounds.getNorth().toFixed(6)}<br>
+                        South: ${bounds.getSouth().toFixed(6)}<br>
+                        East: ${bounds.getEast().toFixed(6)}<br>
+                        West: ${bounds.getWest().toFixed(6)}
+                    </div>
+                    
+                    <div style="margin: 8px 0;">
+                        <strong>Zoom & Scale:</strong><br>
+                        Level: ${zoom}/22<br>
+                        Approx. Scale: ${getApproximateScale(zoom)}<br>
+                        View Area: ~${getViewArea(zoom)} radius
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: 10px;">
+                        <button onclick="copyCoordinates(${center.lat}, ${center.lng})" style="padding: 4px 8px; margin: 2px; background: #3498db; color: white; border: none; border-radius: 3px; font-size: 11px;">Copy Center</button>
+                        <button onclick="toggleGrid()" style="padding: 4px 8px; margin: 2px; background: #2ecc71; color: white; border: none; border-radius: 3px; font-size: 11px;">Toggle Grid</button>
+                    </div>
+                </div>
+            `)
+            .openOn(map);
+        }
+
+        // Get approximate scale for zoom level
+        function getApproximateScale(zoom) {
+            const scales = {
+                15: "1:50,000",
+                16: "1:25,000", 
+                17: "1:12,500",
+                18: "1:6,250",
+                19: "1:3,125",
+                20: "1:1,562",
+                21: "1:781",
+                22: "1:390"
+            };
+            return scales[zoom] || `1:${Math.round(591657527 / Math.pow(2, zoom))}`;
+        }
+
+        // Get view area for zoom level
+        function getViewArea(zoom) {
+            const areas = {
+                15: "2km",
+                16: "1km",
+                17: "500m", 
+                18: "250m",
+                19: "125m",
+                20: "60m",
+                21: "30m",
+                22: "15m"
+            };
+            return areas[zoom] || `${Math.round(40075000 / Math.pow(2, zoom+8))}m`;
+        }
+
+        // Copy coordinates to clipboard
+        function copyCoordinates(lat, lng) {
+            const coordText = `${lat.toFixed(8)}, ${lng.toFixed(8)}`;
+            navigator.clipboard.writeText(coordText).then(() => {
+                alert(`Coordinates copied: ${coordText}`);
+            }).catch(() => {
+                alert(`Coordinates: ${coordText}\n(Manual copy required)`);
+            });
+        }
+
+        // Toggle grid overlay
+        function toggleGrid() {
+            if (window.gridOverlay) {
+                map.removeLayer(window.gridOverlay);
+                window.gridOverlay = null;
+            } else {
+                addGridOverlay();
+            }
+        }
+
+        // Add grid overlay for precise measurements
+        function addGridOverlay() {
+            const bounds = map.getBounds();
+            const center = map.getCenter();
+            const zoom = map.getZoom();
+            
+            // Grid spacing based on zoom level (in meters)
+            let gridSpacing;
+            if (zoom >= 21) gridSpacing = 5;        // 5m grid for ultra detail
+            else if (zoom >= 20) gridSpacing = 10;   // 10m grid for room level
+            else if (zoom >= 19) gridSpacing = 25;   // 25m grid for building level
+            else if (zoom >= 17) gridSpacing = 50;   // 50m grid for street level
+            else gridSpacing = 100;                  // 100m grid for area level
+            
+            const gridLines = [];
+            
+            // Calculate grid bounds
+            const latSpacing = gridSpacing / 111320; // Approximate degrees per meter
+            const lngSpacing = gridSpacing / (111320 * Math.cos(center.lat * Math.PI / 180));
+            
+            // Create vertical lines
+            for (let lng = Math.floor(bounds.getWest() / lngSpacing) * lngSpacing; 
+                 lng <= bounds.getEast(); 
+                 lng += lngSpacing) {
+                gridLines.push(L.polyline([
+                    [bounds.getSouth(), lng],
+                    [bounds.getNorth(), lng]
+                ], {
+                    color: '#3498db',
+                    weight: 1,
+                    opacity: 0.3
+                }));
+            }
+            
+            // Create horizontal lines  
+            for (let lat = Math.floor(bounds.getSouth() / latSpacing) * latSpacing;
+                 lat <= bounds.getNorth();
+                 lat += latSpacing) {
+                gridLines.push(L.polyline([
+                    [lat, bounds.getWest()],
+                    [lat, bounds.getEast()]
+                ], {
+                    color: '#3498db', 
+                    weight: 1,
+                    opacity: 0.3
+                }));
+            }
+            
+            window.gridOverlay = L.layerGroup(gridLines);
+            window.gridOverlay.addTo(map);
+            
+            // Show grid info
+            const gridInfo = L.control({position: 'topleft'});
+            gridInfo.onAdd = function() {
+                const div = L.DomUtil.create('div', 'grid-info');
+                div.style.cssText = `
+                    background: rgba(52, 152, 219, 0.9);
+                    color: white;
+                    padding: 6px 10px;
+                    border-radius: 5px;
+                    font-size: 12px;
+                    font-weight: bold;
+                `;
+                div.innerHTML = `📐 Grid: ${gridSpacing}m spacing`;
+                
+                // Auto-remove after 3 seconds
+                setTimeout(() => {
+                    if (div.parentNode) {
+                        div.parentNode.removeChild(div);
+                    }
+                }, 3000);
+                
+                return div;
+            };
+            gridInfo.addTo(map);
+        }
+
+        // File input handler
+        document.getElementById('file-input').addEventListener('change', function(e) {
+            selectedFile = e.target.files[0];
+            const uploadBtn = document.getElementById('upload-btn');
+            
+            if (selectedFile) {
+                uploadBtn.disabled = false;
+                uploadBtn.innerHTML = `<i class="fas fa-play"></i> Analyze ${selectedFile.name}`;
+            } else {
+                uploadBtn.disabled = true;
+                uploadBtn.innerHTML = '<i class="fas fa-play"></i> Analyze';
+            }
+        });
+
+        // Upload file function
+        async function uploadFile() {
+            if (!selectedFile) {
+                alert('Please select a file first');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('type', document.getElementById('detection-type').value);
+
+            const resultDiv = document.getElementById('upload-result');
+            resultDiv.innerHTML = '<div class="loading">Analyzing file...</div>';
+
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                displayUploadResult(result);
+                refreshUploadHistory();
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="detection-result error">Error: ${error.message}</div>`;
+            }
+        }
+
+        // Display upload result
+        function displayUploadResult(result) {
+            const resultDiv = document.getElementById('upload-result');
+            
+            if (result.error) {
+                resultDiv.innerHTML = `<div class="detection-result error">
+                    <h3><i class="fas fa-exclamation-triangle"></i> Error</h3>
+                    <p>${result.error}</p>
+                </div>`;
+                return;
+            }
+
+            let html = '<div class="detection-result">';
+            
+            if (result.detections !== undefined) {
+                // Image detection result
+                html += `<h3><i class="fas fa-check-circle"></i> Detection Complete</h3>`;
+                html += `<p><strong>Humans detected:</strong> ${result.count || 0}</p>`;
+                
+                if (result.highest_confidence) {
+                    html += `<p><strong>Highest confidence:</strong> ${(result.highest_confidence * 100).toFixed(1)}%</p>`;
+                    html += '<div class="confidence-bar">';
+                    html += `<div class="confidence-fill" style="width: ${result.highest_confidence * 100}%"></div>`;
+                    html += '</div>';
+                }
+                
+                if (result.processed_image) {
+                    html += `<img src="/static/${result.processed_image}" class="image-preview" alt="Processed image">`;
+                }
+            } else if (result.detected !== undefined) {
+                // Voice detection result
+                html += `<h3><i class="fas fa-${result.detected ? 'check-circle' : 'times-circle'}"></i> Voice Analysis</h3>`;
+                html += `<p><strong>Voice detected:</strong> ${result.detected ? 'Yes' : 'No'}</p>`;
+                html += `<p><strong>Confidence:</strong> ${(result.confidence * 100).toFixed(1)}%</p>`;
+                html += `<p><strong>Duration:</strong> ${result.duration?.toFixed(1)}s</p>`;
+                
+                html += '<div class="confidence-bar">';
+                html += `<div class="confidence-fill" style="width: ${result.confidence * 100}%"></div>`;
+                html += '</div>';
+            }
+            
+            html += '</div>';
+            resultDiv.innerHTML = html;
+        }
+
+        // Refresh functions
+        async function refreshAll() {
+            await Promise.all([
+                refreshMap(),
+                refreshData(),
+                refreshDetections(),
+                refreshUploadHistory()
+            ]);
+        }
+
+        async function refreshMap() {
+            try {
+                console.log('Loading map data...');
+                const response = await fetch('/api/map');
+                const mapData = await response.json();
+                console.log('Map data received:', mapData);
+                updateMapMarkers(mapData);
+            } catch (error) {
+                console.error('Error refreshing map:', error);
+            }
+        }
+
+        function updateMapMarkers(mapData) {
+            // Clear existing markers
+            robotMarkers.forEach(marker => map.removeLayer(marker));
+            detectionMarkers.forEach(marker => map.removeLayer(marker));
+            robotMarkers = [];
+            detectionMarkers = [];
+
+            // Update map center if we have data with optimal zoom for detail
+            if (mapData.center && mapData.center.length === 2) {
+                map.setView(mapData.center, 21); // Start with ultra-detail zoom
+            }
+
+            // Add enhanced robot location markers for high-zoom detail
+            mapData.robot_locations.forEach((location, index) => {
+                // Create larger, more detailed robot icon for high zoom levels
+                const robotIcon = L.divIcon({
+                    className: 'robot-marker-hd',
+                    html: `
+                        <div style="
+                            background: linear-gradient(135deg, #00b894, #00a085);
+                            color: white;
+                            padding: 15px 20px;
+                            border-radius: 25px;
+                            font-size: 14px;
+                            font-weight: bold;
+                            text-align: center;
+                            border: 4px solid white;
+                            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+                            min-width: 180px;
+                            position: relative;
+                            backdrop-filter: blur(5px);
+                        ">
+                            <div style="font-size: 16px; margin-bottom: 4px;">🤖 Robot ${index + 1}</div>
+                            <div style="font-size: 12px; line-height: 1.3;">
+                                🔋 ${location.battery.toFixed(0)}% | 📍 ${location.status}<br>
+                                📊 ${location.motion ? '⚠️ Motion' : '✅ Clear'}
+                            </div>
+                            <div style="
+                                position: absolute;
+                                bottom: -12px;
+                                left: 50%;
+                                transform: translateX(-50%);
+                                width: 0;
+                                height: 0;
+                                border-left: 12px solid transparent;
+                                border-right: 12px solid transparent;
+                                border-top: 12px solid #00b894;
+                            "></div>
+                        </div>
+                    `,
+                    iconSize: [200, 100],
+                    iconAnchor: [100, 112]
+                });
+
+                const marker = L.marker([location.lat, location.lng], { icon: robotIcon })
+                    .bindPopup(`
+                        <div style="text-align: center; min-width: 250px; font-family: Arial, sans-serif;">
+                            <h3 style="margin: 0 0 15px 0; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px;">
+                                🤖 Robot ${index + 1} Status
+                            </h3>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0;">
+                                <div style="background: #f8f9fa; padding: 8px; border-radius: 5px;">
+                                    <strong>🔋 Battery</strong><br>
+                                    <span style="font-size: 18px; color: ${location.battery > 70 ? '#2ecc71' : location.battery > 30 ? '#f39c12' : '#e74c3c'};">
+                                        ${location.battery.toFixed(1)}%
+                                    </span>
+                                </div>
+                                <div style="background: #f8f9fa; padding: 8px; border-radius: 5px;">
+                                    <strong>📊 Status</strong><br>
+                                    <span style="font-size: 14px;">${location.status}</span>
+                                </div>
+                            </div>
+                            
+                            <div style="background: #e8f4f8; padding: 10px; border-radius: 5px; margin: 10px 0;">
+                                <strong>📍 Precise Location</strong><br>
+                                <span style="font-family: 'Courier New', monospace; font-size: 12px;">
+                                    ${location.lat.toFixed(8)}, ${location.lng.toFixed(8)}
+                                </span><br>
+                                <button onclick="copyCoordinates(${location.lat}, ${location.lng})" 
+                                        style="margin-top: 5px; padding: 3px 8px; background: #3498db; color: white; border: none; border-radius: 3px; font-size: 11px;">
+                                    Copy Coordinates
+                                </button>
+                            </div>
+                            
+                            <div style="background: ${location.motion ? '#ffeaa7' : '#d1f2eb'}; padding: 8px; border-radius: 5px; margin: 10px 0;">
+                                <strong>🎯 Motion Detection</strong><br>
+                                <span style="font-size: 16px;">${location.motion ? '⚠️ MOTION DETECTED' : '✅ Area Clear'}</span>
+                            </div>
+                            
+                            <p style="margin: 10px 0; font-size: 12px; color: #7f8c8d;">
+                                <strong>Last Update:</strong> ${new Date(location.timestamp).toLocaleString()}
+                            </p>
+                            
+                            <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #bdc3c7;">
+                                <button onclick="map.setView([${location.lat}, ${location.lng}], 22)" 
+                                        style="padding: 6px 12px; background: #2ecc71; color: white; border: none; border-radius: 5px; margin: 3px;">
+                                    🔍 Max Zoom
+                                </button>
+                                <button onclick="enableMeasurement()" 
+                                        style="padding: 6px 12px; background: #f39c12; color: white; border: none; border-radius: 5px; margin: 3px;">
+                                    📏 Measure
+                                </button>
+                            </div>
+                        </div>
+                    `)
+                    .addTo(map);
+
+                robotMarkers.push(marker);
+
+                // Add precision circle around robot (5m radius for ultra-detail view)
+                const precisionCircle = L.circle([location.lat, location.lng], {
+                    color: '#00b894',
+                    fillColor: '#00b894',
+                    fillOpacity: 0.1,
+                    weight: 2,
+                    radius: 5, // 5-meter precision circle
+                    dashArray: '3, 3'
+                }).addTo(map);
+                
+                robotMarkers.push(precisionCircle);
+
+                // Add direction indicator if robot is moving
+                if (location.status && location.status.includes('Moving')) {
+                    const arrow = L.marker([location.lat, location.lng], {
+                        icon: L.divIcon({
+                            className: 'direction-arrow',
+                            html: '<div style="font-size: 24px; color: #00b894;">⬆️</div>',
+                            iconSize: [30, 30],
+                            iconAnchor: [15, 45]
+                        })
+                    }).addTo(map);
+                    
+                    robotMarkers.push(arrow);
+                }
+            });
+
+            // Add enhanced detection markers with precision details
+            mapData.detections.forEach((detection, index) => {
+                const detectionIcon = L.divIcon({
+                    className: 'detection-marker-hd',
+                    html: `
+                        <div style="
+                            background: linear-gradient(135deg, #e17055, #d63031);
+                            color: white;
+                            padding: 12px 16px;
+                            border-radius: 20px;
+                            font-size: 13px;
+                            font-weight: bold;
+                            text-align: center;
+                            border: 3px solid white;
+                            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+                            min-width: 150px;
+                            animation: pulse-detection 2s infinite;
+                            backdrop-filter: blur(5px);
+                        ">
+                            <div style="font-size: 16px; margin-bottom: 3px;">⚠️ HUMAN DETECTED</div>
+                            <div style="font-size: 11px; line-height: 1.2;">
+                                📊 Confidence: ${(detection.confidence * 100).toFixed(0)}%<br>
+                                🕐 ${new Date(detection.timestamp).toLocaleTimeString()}<br>
+                                📍 Precision: ±2m
+                            </div>
+                        </div>
+                        <style>
+                        @keyframes pulse-detection {
+                            0% { transform: scale(1); opacity: 1; }
+                            50% { transform: scale(1.05); opacity: 0.8; }
+                            100% { transform: scale(1); opacity: 1; }
+                        }
+                        </style>
+                    `,
+                    iconSize: [170, 80],
+                    iconAnchor: [85, 40]
+                });
+
+                const marker = L.marker([detection.lat, detection.lng], { icon: detectionIcon })
+                    .bindPopup(`
+                        <div style="text-align: center; min-width: 280px; font-family: Arial, sans-serif;">
+                            <h3 style="margin: 0 0 15px 0; color: #e17055; border-bottom: 2px solid #e17055; padding-bottom: 8px;">
+                                ⚠️ Human Detection Alert
+                            </h3>
+                            
+                            <div style="background: #fee2e2; border: 2px solid #fca5a5; border-radius: 10px; padding: 15px; margin: 10px 0;">
+                                <div style="font-size: 24px; margin-bottom: 10px;">🚨</div>
+                                <strong style="font-size: 16px; color: #dc2626;">HIGH PRIORITY DETECTION</strong>
+                            </div>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0;">
+                                <div style="background: #f8f9fa; padding: 10px; border-radius: 8px;">
+                                    <strong>🎯 Detection Type</strong><br>
+                                    <span style="font-size: 16px; color: #e17055;">${detection.type.toUpperCase()}</span>
+                                </div>
+                                <div style="background: #f8f9fa; padding: 10px; border-radius: 8px;">
+                                    <strong>📊 Confidence</strong><br>
+                                    <span style="font-size: 18px; color: ${detection.confidence > 0.8 ? '#2ecc71' : '#f39c12'};">
+                                        ${(detection.confidence * 100).toFixed(1)}%
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div style="background: #e8f4f8; padding: 12px; border-radius: 8px; margin: 15px 0;">
+                                <strong>📍 Exact Location</strong><br>
+                                <span style="font-family: 'Courier New', monospace; font-size: 12px;">
+                                    Lat: ${detection.lat.toFixed(8)}<br>
+                                    Lng: ${detection.lng.toFixed(8)}
+                                </span><br>
+                                <div style="margin-top: 8px; font-size: 12px; color: #666;">
+                                    <strong>Precision:</strong> ±2 meters<br>
+                                    <strong>Detection Radius:</strong> 10m area
+                                </div>
+                                <button onclick="copyCoordinates(${detection.lat}, ${detection.lng})" 
+                                        style="margin-top: 8px; padding: 4px 10px; background: #e17055; color: white; border: none; border-radius: 4px; font-size: 11px;">
+                                    📋 Copy Location
+                                </button>
+                            </div>
+                            
+                            <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 10px; margin: 15px 0;">
+                                <strong>🕐 Detection Time</strong><br>
+                                <span style="font-size: 14px;">
+                                    ${new Date(detection.timestamp).toLocaleString()}<br>
+                                    <small>(${Math.round((new Date() - new Date(detection.timestamp)) / 60000)} minutes ago)</small>
+                                </span>
+                            </div>
+                            
+                            <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #bdc3c7;">
+                                <button onclick="map.setView([${detection.lat}, ${detection.lng}], 22)" 
+                                        style="padding: 8px 15px; background: #e17055; color: white; border: none; border-radius: 6px; margin: 4px; font-size: 12px;">
+                                    🔍 Ultra Zoom
+                                </button>
+                                <button onclick="enableMeasurement()" 
+                                        style="padding: 8px 15px; background: #f39c12; color: white; border: none; border-radius: 6px; margin: 4px; font-size: 12px;">
+                                    📏 Measure Distance
+                                </button>
+                                <button onclick="toggleGrid()" 
+                                        style="padding: 8px 15px; background: #2ecc71; color: white; border: none; border-radius: 6px; margin: 4px; font-size: 12px;">
+                                    📐 Show Grid
+                                </button>
+                            </div>
+                        </div>
+                    `)
+                    .addTo(map);
+
+                detectionMarkers.push(marker);
+
+                // Add multiple precision circles for better area visualization
+                const detectionAreas = [
+                    { radius: 2, color: '#e17055', fillOpacity: 0.3, weight: 2 }, // High precision core
+                    { radius: 5, color: '#e17055', fillOpacity: 0.15, weight: 1 }, // Detection zone
+                    { radius: 10, color: '#e17055', fillOpacity: 0.05, weight: 1, dashArray: '5, 5' } // Alert perimeter
+                ];
+
+                detectionAreas.forEach((area, areaIndex) => {
+                    const circle = L.circle([detection.lat, detection.lng], {
+                        color: area.color,
+                        fillColor: area.color,
+                        fillOpacity: area.fillOpacity,
+                        weight: area.weight,
+                        radius: area.radius,
+                        dashArray: area.dashArray || ''
+                    }).addTo(map);
+                    
+                    detectionMarkers.push(circle);
+                });
+
+                // Add pulsing effect marker at center for high attention
+                const pulseMarker = L.circleMarker([detection.lat, detection.lng], {
+                    radius: 8,
+                    color: '#e17055',
+                    fillColor: '#e17055',
+                    fillOpacity: 0.8,
+                    weight: 3,
+                    className: 'pulse-marker'
+                }).addTo(map);
+                
+                detectionMarkers.push(pulseMarker);
+            });
+
+            console.log(`Enhanced map updated with ultra-detail markers:`);
+            console.log(`   🤖 ${robotMarkers.length/2} robot locations (with 5m precision circles)`);
+            console.log(`   ⚠️ ${detectionMarkers.length/4} detection zones (with multi-level precision)`);
+            console.log(`   🔍 Current zoom: ${map.getZoom()}/22 (${getViewArea(map.getZoom())} view radius)`);
+        }
+
+        function displayMap(mapData) {
+            updateMapMarkers(mapData);
+        }
+
+        async function refreshData() {
+            try {
+                const response = await fetch('/api/robot-data');
+                const data = await response.json();
+                
+                updateRobotMetrics(data);
+                updateRobotDataTable(data);
+                
+                if (data.length > 0) {
+                    forceUpdateAllStatus(data[0]);
+                    // Update gas metrics with new data - NEW (but only if gas data exists)
+                    if (data[0].mq2_gas_level !== undefined) {
+                        updateGasMetrics(data[0]);
+                    }
+                }
+            } catch (error) {
+                console.error('Error refreshing robot data:', error);
+                forceDisconnectedStatus();
+            }
+        }
+
+        function forceUpdateAllStatus(latestData) {
+            const connStatus = document.getElementById('connection-status');
+            const connItem = document.getElementById('connection-status-item');
+            const connIcon = document.getElementById('connection-icon');
+            
+            connStatus.textContent = 'Connected';
+            connItem.className = 'status-item connected';
+            connIcon.className = 'fas fa-satellite-dish';
+            connIcon.style.color = '#2ecc71';
+            
+            const batteryLevel = latestData.battery_level || 0;
+            const battStatus = document.getElementById('battery-status');
+            const battItem = document.getElementById('battery-status-item');
+            const battIcon = document.getElementById('battery-icon');
+            
+            battStatus.textContent = batteryLevel.toFixed(0) + '%';
+            battItem.className = 'status-item';
+            
+            if (batteryLevel > 70) {
+                battItem.classList.add('connected');
+                battIcon.className = 'fas fa-battery-full';
+                battIcon.style.color = '#2ecc71';
+            } else if (batteryLevel > 30) {
+                battItem.classList.add('warning');
+                battIcon.className = 'fas fa-battery-half';
+                battIcon.style.color = '#f39c12';
+            } else {
+                battItem.classList.add('disconnected');
+                battIcon.className = 'fas fa-battery-empty';
+                battIcon.style.color = '#e74c3c';
+            }
+            
+            const locStatus = document.getElementById('location-status');
+            const locItem = document.getElementById('location-status-item');
+            const locIcon = document.getElementById('location-icon');
+            
+            const hasGPS = latestData.latitude && latestData.longitude && latestData.latitude !== 0;
+            
+            locItem.className = 'status-item';
+            if (hasGPS) {
+                locStatus.textContent = 'Tracking';
+                locItem.classList.add('connected');
+                locIcon.className = 'fas fa-map-marker-alt';
+                locIcon.style.color = '#2ecc71';
+            } else {
+                locStatus.textContent = 'Searching GPS';
+                locItem.classList.add('searching');
+                locIcon.className = 'fas fa-search-location';
+                locIcon.style.color = '#9b59b6';
+            }
+            
+            const detStatus = document.getElementById('detection-status');
+            const detItem = document.getElementById('detection-status-item');
+            const detIcon = document.getElementById('detection-icon');
+            
+            detItem.className = 'status-item';
+            if (latestData.motion_detected) {
+                detStatus.textContent = 'Human Detected!';
+                detItem.classList.add('disconnected');
+                detIcon.className = 'fas fa-exclamation-circle';
+                detIcon.style.color = '#e74c3c';
+            } else if (latestData.status && latestData.status.includes('scan')) {
+                detStatus.textContent = 'Scanning';
+                detItem.classList.add('warning');
+                detIcon.className = 'fas fa-search';
+                detIcon.style.color = '#f39c12';
+            } else if (latestData.status && latestData.status.includes('Moving')) {
+                detStatus.textContent = 'Active';
+                detItem.classList.add('connected');
+                detIcon.className = 'fas fa-eye';
+                detIcon.style.color = '#2ecc71';
+            } else {
+                detStatus.textContent = 'Standby';
+                detItem.classList.add('searching');
+                detIcon.className = 'fas fa-pause-circle';
+                detIcon.style.color = '#9b59b6';
+            }
+            
+            console.log('✅ Status indicators updated:', {
+                connection: 'Connected',
+                battery: batteryLevel + '%',
+                gps: hasGPS ? 'Tracking' : 'Searching',
+                detection: latestData.motion_detected ? 'Human Detected' : 'Active'
+            });
+        }
+
+        function forceDisconnectedStatus() {
+            const connStatus = document.getElementById('connection-status');
+            const connItem = document.getElementById('connection-status-item');
+            const connIcon = document.getElementById('connection-icon');
+            
+            connStatus.textContent = 'Disconnected';
+            connItem.className = 'status-item disconnected';
+            connIcon.className = 'fas fa-times-circle';
+            connIcon.style.color = '#e74c3c';
+        }
+
+        async function refreshDetections() {
+            try {
+                const response = await fetch('/api/detections');
+                const data = await response.json();
+                
+                updateDetectionMetrics(data);
+                updateDetectionsTable(data);
+            } catch (error) {
+                console.error('Error refreshing detections:', error);
+            }
+        }
+
+        async function refreshUploadHistory() {
+            try {
+                const response = await fetch('/api/upload-history');
+                const data = await response.json();
+                
+                updateUploadHistoryTable(data);
+            } catch (error) {
+                console.error('Error refreshing upload history:', error);
+            }
+        }
+
+        function updateRobotMetrics(data) {
+            if (data.length > 0) {
+                const latest = data[0];
+                document.getElementById('front-distance').textContent = latest.front_distance?.toFixed(1) || '--';
+                document.getElementById('back-distance').textContent = latest.back_distance?.toFixed(1) || '--';
+                document.getElementById('motion-status').textContent = latest.motion_detected ? 'Yes' : 'No';
+                document.getElementById('robot-status').textContent = latest.status || '--';
+                document.getElementById('emergency-status').textContent = latest.emergency_mode ? 'ACTIVE' : 'Normal';
+                document.getElementById('system-health').textContent = latest.system_healthy ? 'Good' : 'Issues';
+            }
+        }
+
+        function updateRobotDataTable(data) {
+            const tbody = document.getElementById('robot-data-body');
+            
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="loading">No data available</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = data.slice(0, 10).map(row => `
+                <tr>
+                    <td>${new Date(row.timestamp).toLocaleString()}</td>
+                    <td>${row.latitude?.toFixed(4) || '--'}, ${row.longitude?.toFixed(4) || '--'}</td>
+                    <td>F: ${row.front_distance?.toFixed(1) || '--'}cm, B: ${row.back_distance?.toFixed(1) || '--'}cm</td>
+                    <td>${row.status || '--'} (${row.battery_level?.toFixed(0) || '--'}%)</td>
+                    <td>MQ2: ${row.mq2_gas_level?.toFixed(1) || '--'}, MQ135: ${row.mq135_air_quality?.toFixed(0) || '--'}ppm</td>
+                </tr>
+            `).join('');
+        }
+
+        function updateDetectionMetrics(data) {
+            const total = data.length;
+            const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+            const recent = data.filter(d => new Date(d.timestamp) > oneHourAgo).length;
+            const avgConfidence = total > 0 ? data.reduce((sum, d) => sum + d.confidence, 0) / total : 0;
+            
+            // Count gas-related alerts
+            const gasDetections = data.filter(d => d.detection_type && d.detection_type.includes('gas')).length;
+            
+            document.getElementById('total-detections').textContent = total;
+            document.getElementById('recent-detections').textContent = recent;
+            document.getElementById('avg-confidence').textContent = (avgConfidence * 100).toFixed(1) + '%';
+            document.getElementById('gas-detections').textContent = gasDetections;
+        }
+
+        function updateDetectionsTable(data) {
+            const tbody = document.getElementById('detections-body');
+            
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="loading">No detections yet</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = data.slice(0, 10).map(row => `
+                <tr>
+                    <td>${new Date(row.timestamp).toLocaleString()}</td>
+                    <td>${row.detection_type}</td>
+                    <td>${(row.confidence * 100).toFixed(1)}%</td>
+                    <td>${row.latitude?.toFixed(4) || '--'}, ${row.longitude?.toFixed(4) || '--'}</td>
+                </tr>
+            `).join('');
+        }
+
+        function updateUploadHistoryTable(data) {
+            const tbody = document.getElementById('upload-history-body');
+            
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="loading">No uploads yet</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = data.slice(0, 10).map(row => `
+                <tr>
+                    <td>${new Date(row.timestamp).toLocaleString()}</td>
+                    <td>${row.file_name}</td>
+                    <td>${row.file_type}</td>
+                    <td>${row.detection_result} (${(row.confidence * 100).toFixed(1)}%)</td>
+                </tr>
+            `).join('');
+        }
+
+        async function simulateData() {
+            try {
+                const response = await fetch('/api/simulate-robot-data', {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                alert('Test data generated successfully!');
+                refreshData();
+                refreshMap();
+            } catch (error) {
+                alert('Error generating test data: ' + error.message);
+            }
+        }
+
+        let cameraStream = null;
+        let detectionEnabled = false;
+        let detectionInterval = null;
+        let detectionWorker = null;
+
+        async function startCamera() {
+            try {
+                const video = document.getElementById('camera-video');
+                const statusDiv = document.getElementById('camera-status');
+                const startBtn = document.getElementById('start-camera-btn');
+                const stopBtn = document.getElementById('stop-camera-btn');
+                const detectBtn = document.getElementById('toggle-detection-btn');
+
+                statusDiv.textContent = 'Checking camera access...';
+                statusDiv.style.background = 'rgba(243, 156, 18, 0.8)';
+
+                if (!navigator.mediaDevices) {
+                    throw new Error('Camera not supported by this browser. Try Chrome, Firefox, or Safari.');
+                }
+
+                if (!navigator.mediaDevices.getUserMedia) {
+                    throw new Error('getUserMedia not supported. Please use HTTPS or newer browser.');
+                }
+
+                if (location.protocol === 'http:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+                    throw new Error('Camera requires HTTPS connection (except on localhost)');
+                }
+
+                statusDiv.textContent = 'Requesting camera permission...';
+
+                cameraStream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        width: { ideal: 640, max: 1280 }, 
+                        height: { ideal: 480, max: 720 },
+                        facingMode: 'user'
+                    },
+                    audio: false
+                }).catch(async (error) => {
+                    console.error('First camera request failed:', error);
+                    
+                    console.log('Trying with basic camera settings...');
+                    return await navigator.mediaDevices.getUserMedia({
+                        video: true,
+                        audio: false
+                    });
+                });
+
+                if (!cameraStream) {
+                    throw new Error('Failed to get camera stream');
+                }
+
+                video.srcObject = cameraStream;
+                
+                await new Promise((resolve, reject) => {
+                    video.onloadedmetadata = resolve;
+                    video.onerror = reject;
+                    setTimeout(() => reject(new Error('Video load timeout')), 10000);
+                });
+
+                await video.play();
+                
+                statusDiv.textContent = 'Camera Active ✅';
+                statusDiv.textContent = 'Camera Active ✅';
+                statusDiv.style.background = 'rgba(46, 204, 113, 0.8)';
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                detectBtn.disabled = false;
+
+                console.log('✅ Camera started successfully');
+                console.log('Video dimensions:', video.videoWidth, 'x', video.videoHeight);
+
+            } catch (error) {
+                console.error('❌ Camera error:', error);
+                const statusDiv = document.getElementById('camera-status');
+                
+                let errorMessage = 'Camera Error: ';
+                
+                if (error.name === 'NotAllowedError') {
+                    errorMessage += 'Permission denied. Please allow camera access and try again.';
+                } else if (error.name === 'NotFoundError') {
+                    errorMessage += 'No camera found. Please connect a camera and try again.';
+                } else if (error.name === 'NotSupportedError') {
+                    errorMessage += 'Camera not supported by this browser.';
+                } else if (error.name === 'NotReadableError') {
+                    errorMessage += 'Camera is being used by another application.';
+                } else {
+                    errorMessage += error.message;
+                }
+                
+                statusDiv.textContent = errorMessage;
+                statusDiv.style.background = 'rgba(231, 76, 60, 0.8)';
+                
+                showCameraTroubleshooting();
+            }
+        }
+
+        function stopCamera() {
+            const video = document.getElementById('camera-video');
+            const statusDiv = document.getElementById('camera-status');
+            const startBtn = document.getElementById('start-camera-btn');
+            const stopBtn = document.getElementById('stop-camera-btn');
+            const detectBtn = document.getElementById('toggle-detection-btn');
+
+            if (detectionEnabled) {
+                toggleDetection();
+            }
+
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+
+            video.srcObject = null;
+
+            statusDiv.textContent = 'Camera Off';
+            statusDiv.style.background = 'rgba(0, 0, 0, 0.7)';
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            detectBtn.disabled = true;
+
+            const canvas = document.getElementById('detection-canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            console.log('📹 Camera stopped');
+        }
+
+        function toggleDetection() {
+            const detectBtn = document.getElementById('toggle-detection-btn');
+            
+            if (!detectionEnabled) {
+                detectionEnabled = true;
+                detectBtn.innerHTML = '<i class="fas fa-stop"></i> Stop Detection';
+                detectBtn.style.background = 'linear-gradient(45deg, #e74c3c, #c0392b)';
+                
+                detectionInterval = setInterval(performDetection, 500);
+                console.log('🔍 Human detection enabled');
+                
+            } else {
+                detectionEnabled = false;
+                detectBtn.innerHTML = '<i class="fas fa-search"></i> Enable Detection';
+                detectBtn.style.background = 'linear-gradient(45deg, #3498db, #2980b9)';
+                
+                if (detectionInterval) {
+                    clearInterval(detectionInterval);
+                    detectionInterval = null;
+                }
+                
+                const canvas = document.getElementById('detection-canvas');
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                document.getElementById('live-detections').textContent = '0';
+                document.getElementById('detection-confidence').textContent = '--';
+                document.getElementById('detection-fps').textContent = '--';
+                
+                console.log('🔍 Human detection disabled');
+            }
+        }
+
+        async function performDetection() {
+            if (!detectionEnabled || !cameraStream) return;
+
+            const video = document.getElementById('camera-video');
+            const canvas = document.getElementById('detection-canvas');
+            const ctx = canvas.getContext('2d');
+
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+
+            try {
+                const detections = simulateHumanDetection(canvas.width, canvas.height);
+                
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                drawDetections(ctx, detections);
+                
+                updateDetectionStats(detections);
+
+            } catch (error) {
+                console.error('Detection error:', error);
+            }
+        }
+
+        function simulateHumanDetection(width, height) {
+            const numDetections = Math.random() < 0.7 ? Math.floor(Math.random() * 3) : 0;
+            const detections = [];
+
+            for (let i = 0; i < numDetections; i++) {
+                const x = Math.random() * (width - 100);
+                const y = Math.random() * (height - 150);
+                const w = 80 + Math.random() * 120;
+                const h = 120 + Math.random() * 180;
+                const confidence = 0.6 + Math.random() * 0.4;
+
+                detections.push({
+                    x: x,
+                    y: y,
+                    width: w,
+                    height: h,
+                    confidence: confidence,
+                    label: 'person'
+                });
+            }
+
+            return detections;
+        }
+
+        function drawDetections(ctx, detections) {
+            detections.forEach((detection, index) => {
+                const { x, y, width, height, confidence } = detection;
+                
+                ctx.strokeStyle = confidence > 0.8 ? '#2ecc71' : '#f39c12';
+                ctx.lineWidth = 3;
+                ctx.fillStyle = confidence > 0.8 ? 'rgba(46, 204, 113, 0.2)' : 'rgba(243, 156, 18, 0.2)';
+                
+                ctx.fillRect(x, y, width, height);
+                ctx.strokeRect(x, y, width, height);
+                
+                ctx.fillStyle = confidence > 0.8 ? '#2ecc71' : '#f39c12';
+                ctx.fillRect(x, y - 25, width, 25);
+                
+                ctx.fillStyle = 'white';
+                ctx.font = '14px Arial';
+                ctx.fillText(`Person ${index + 1}: ${(confidence * 100).toFixed(0)}%`, x + 5, y - 8);
+            });
+        }
+
+        function updateDetectionStats(detections) {
+            document.getElementById('live-detections').textContent = detections.length;
+            
+            if (detections.length > 0) {
+                const avgConfidence = detections.reduce((sum, d) => sum + d.confidence, 0) / detections.length;
+                document.getElementById('detection-confidence').textContent = (avgConfidence * 100).toFixed(0) + '%';
+            } else {
+                document.getElementById('detection-confidence').textContent = '--';
+            }
+            
+            document.getElementById('detection-fps').textContent = '2 FPS';
+        }
+
+        function showCameraTroubleshooting() {
+            const troubleshootDiv = document.createElement('div');
+            troubleshootDiv.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: white;
+                padding: 20px;
+                border-radius: 10px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                z-index: 1000;
+                max-width: 500px;
+                font-family: Arial, sans-serif;
+            `;
+            
+            troubleshootDiv.innerHTML = `
+                <h3 style="color: #e74c3c; margin-top: 0;">📹 Camera Troubleshooting</h3>
+                
+                <h4>🔧 Quick Fixes:</h4>
+                <ul style="margin: 10px 0;">
+                    <li><strong>Chrome/Safari:</strong> Access via <code>https://</code> or <code>localhost</code></li>
+                    <li><strong>Firefox:</strong> Usually works on HTTP</li>
+                    <li><strong>Permission:</strong> Check browser address bar for camera icon</li>
+                    <li><strong>Other apps:</strong> Close Zoom, Skype, etc. using camera</li>
+                </ul>
+                
+                <h4>🌐 Current Setup:</h4>
+                <ul style="margin: 10px 0; font-size: 12px; color: #666;">
+                    <li>Protocol: ${location.protocol}</li>
+                    <li>Host: ${location.hostname}</li>
+                    <li>Browser: ${navigator.userAgent.split(' ')[0]}</li>
+                    <li>MediaDevices: ${navigator.mediaDevices ? '✅ Supported' : '❌ Not supported'}</li>
+                    <li>getUserMedia: ${navigator.mediaDevices?.getUserMedia ? '✅ Available' : '❌ Not available'}</li>
+                </ul>
+                
+                <h4>💡 Solutions:</h4>
+                <ol style="margin: 10px 0;">
+                    <li><strong>Use HTTPS:</strong> Camera requires secure connection</li>
+                    <li><strong>Try localhost:</strong> Works without HTTPS</li>
+                    <li><strong>Enable camera:</strong> Browser settings → Privacy → Camera</li>
+                    <li><strong>Update browser:</strong> Use latest Chrome/Firefox/Safari</li>
+                </ol>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <button onclick="this.parentElement.parentElement.remove()" style="
+                        background: #3498db; 
+                        color: white; 
+                        border: none; 
+                        padding: 10px 20px; 
+                        border-radius: 5px; 
+                        cursor: pointer;
+                    ">Close</button>
+                    
+                    <button onclick="location.reload()" style="
+                        background: #2ecc71; 
+                        color: white; 
+                        border: none; 
+                        padding: 10px 20px; 
+                        border-radius: 5px; 
+                        cursor: pointer;
+                        margin-left: 10px;
+                    ">Reload Page</button>
+                </div>
+            `;
+            
+            document.body.appendChild(troubleshootDiv);
+            
+            setTimeout(() => {
+                if (troubleshootDiv.parentElement) {
+                    troubleshootDiv.remove();
+                }
+            }, 30000);
+        }
+
+        function initializeDashboard() {
+            console.log('Dashboard loading...');
+            initializeMap();
+            refreshAll();
+            setInterval(refreshAll, 30000);
+            
+            checkCameraSupport();
+        }
+
+        function checkCameraSupport() {
+            const startBtn = document.getElementById('start-camera-btn');
+            
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                startBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Camera Not Supported';
+                startBtn.disabled = true;
+                startBtn.style.background = 'linear-gradient(45deg, #e74c3c, #c0392b)';
+                
+                document.getElementById('camera-status').textContent = 'Camera API not supported in this browser';
+                document.getElementById('camera-status').style.background = 'rgba(231, 76, 60, 0.8)';
+                
+                console.log('❌ Camera not supported:', {
+                    mediaDevices: !!navigator.mediaDevices,
+                    getUserMedia: !!navigator.mediaDevices?.getUserMedia,
+                    protocol: location.protocol,
+                    hostname: location.hostname
+                });
+            } else {
+                console.log('✅ Camera API supported');
+            }
+        }
+
+        // Initialize dashboard when page loads
+        document.addEventListener('DOMContentLoaded', initializeDashboard);
+    </script>
+</body>
+</html>

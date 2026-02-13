@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Detection Result</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f0f2f5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px;
+    }
+
+    .result-box {
+      background-color: #fff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      text-align: center;
+      max-width: 700px;
+    }
+
+    img {
+      max-width: 100%;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+
+    th, td {
+      padding: 8px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    th {
+      background-color: #4CAF50;
+      color: white;
+    }
+
+    a {
+      color: #4CAF50;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="result-box">
+    <h2>✅ Detection Complete</h2>
+    <img src="{{ url_for('static', filename='results/' + filename) }}">
+
+    {% if detections %}
+    <h3>🧾 Detected Humans</h3>
+    <table>
+      <tr>
+        <th>Class</th>
+        <th>X Center</th>
+        <th>Y Center</th>
+        <th>Width</th>
+        <th>Height</th>
+        <th>Confidence</th>
+      </tr>
+      {% for d in detections %}
+      <tr>
+        <td>{{ d[0] }}</td>
+        <td>{{ d[1] }}</td>
+        <td>{{ d[2] }}</td>
+        <td>{{ d[3] }}</td>
+        <td>{{ d[4] }}</td>
+        <td>{{ d[5] }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <p>❌ No human detected in this image.</p>
+    {% endif %}
+
+    <p><a href="{{ url_for('index') }}">← Detect Another Image</a></p>
+  </div>
+</body>
+</html>
